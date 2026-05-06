@@ -10,7 +10,10 @@ The default sample config seeds the first search setup with this intent:
 - posted: past week
 - sort: newest first
 
-After first launch, keywords and search area are managed in the web interface, not hardcoded in the app. You can add searches for different keyword sets, locations, radii, or LinkedIn AI URLs; all results are stored in the same local database.
+After the first launch, keywords and search areas are managed in the web interface, not hardcoded in the app. You can add searches for different keyword sets, locations, radii, or LinkedIn AI URLs; all results are stored in the same local database.
+
+Screenshot of the web UI:
+![](./Screenshot_web_UI.png)
 
 ## Architecture
 
@@ -21,11 +24,11 @@ The short version:
 - LinkedIn parsing lives in `parser.py`.
 - Search setups and jobs live in SQLite at `.job_state/jobs.sqlite3`.
 - User tracking fields include `new`, `saved`, `not_interested`, `applied`, `applied_at`, `application_status`, and notes.
-- Jobs marked `not_interested` are hidden but remain in the database so they do not come back.
+- Jobs marked `not_interested` are hidden but remain in the database, so they do not come back.
 
 ## Why it works this way
 
-LinkedIn can restrict automated scraping and account automation. This project does not automate login, passwords, applying, messaging, or bypasses. It does safer local tracking:
+LinkedIn can restrict automated scraping and account automation. This project does not automate login, passwords, applying, messaging, or bypassing. It does safer local tracking:
 
 1. Builds the filtered public LinkedIn Jobs URLs you would otherwise create manually.
 2. Opens your LinkedIn AI-search URL in your browser when configured.
@@ -105,7 +108,7 @@ Reports are written under `reports/`. Jobs are stored in `.job_state/jobs.sqlite
 The app has two collection paths:
 
 1. Public keyword searches: `Refresh Active Searches` reads active search setups from SQLite, builds LinkedIn Jobs URLs from each setup's `keywords`, `location`, `geo_id`, `radius_km`, and `posted_within_days`, fetches those public result pages, and parses job cards from the returned HTML.
-2. Logged-in AI search import: a setup can store a `LinkedIn AI Search` URL. If LinkedIn requires login for that page, open it in your normal browser, log in normally, save or copy the page HTML, then paste it into the web app's import box. The app parses that HTML locally.
+2. Logged-in AI search import: a setup can store a `LinkedIn AI Search` URL. If LinkedIn requires a login for that page, open it in your normal browser, log in normally, save or copy the page HTML, then paste it into the web app's import box. The app parses that HTML locally.
 
 The database is not tied to one keyword set. A job can be discovered from any search setup, and your saved/applied/not-interested status stays attached to the LinkedIn job ID when the same job appears again.
 
