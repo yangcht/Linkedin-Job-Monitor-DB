@@ -10,7 +10,7 @@ The default sample config seeds the first search setup with this intent:
 - posted: past week
 - sort: newest first
 
-After the first launch, keywords and search areas are managed in the web interface, not hardcoded in the app. You can add searches for different keyword sets, locations, radii, or LinkedIn AI URLs; all results are stored in the same local database.
+After the first launch, keywords and search areas are managed in the web interface, not hardcoded in the app. You can add searches for different keyword sets, locations, or radii; the app generates the LinkedIn search URLs used by refresh and stores all results in the same local database.
 
 Screenshot of the web UI:
 ![](./Screenshot_web_UI.png)
@@ -31,7 +31,7 @@ The short version:
 LinkedIn can restrict automated scraping and account automation. This project does not automate login, passwords, applying, messaging, or bypassing. It does safer local tracking:
 
 1. Builds the filtered public LinkedIn Jobs URLs you would otherwise create manually.
-2. Opens your LinkedIn AI-search URL in your browser when configured.
+2. Opens your manual LinkedIn URL in your browser when configured.
 3. Tracks job IDs and metadata from public result pages, public detail pages, or saved HTML.
 4. Keeps your application workflow state locally.
 
@@ -90,10 +90,10 @@ linked-jobs-app
 
 Then open `http://127.0.0.1:8765`.
 
-If LinkedIn blocks public fetching, or if you want to use the logged-in LinkedIn AI search:
+If LinkedIn blocks public fetching, or if you want to import results from a logged-in/manual LinkedIn URL:
 
-1. Open the relevant search setup's `LinkedIn AI Search` link from the web page, or run `linked-jobs open`.
-2. Open the AI search link in your browser.
+1. Open the relevant search setup's manual LinkedIn URL from the web page, or run `linked-jobs open`.
+2. Open the manual link in your browser.
 3. Save the search result page HTML from the browser.
 3. Import the saved HTML from the web interface, or use the CLI:
 
@@ -108,11 +108,11 @@ Reports are written under `reports/`. Jobs are stored in `.job_state/jobs.sqlite
 The app has two collection paths:
 
 1. Public keyword searches: `Refresh Active Searches` reads active search setups from SQLite, builds LinkedIn Jobs URLs from each setup's `keywords`, `location`, `geo_id`, `radius_km`, and `posted_within_days`, fetches those public result pages, and parses job cards from the returned HTML.
-2. Logged-in AI search import: a setup can store a `LinkedIn AI Search` URL. If LinkedIn requires a login for that page, open it in your normal browser, log in normally, save or copy the page HTML, then paste it into the web app's import box. The app parses that HTML locally.
+2. Manual import: a setup can store an optional manual LinkedIn URL for opening in your normal browser. Refresh does not fetch this URL. If LinkedIn requires a login for that page, log in normally, save or copy the page HTML, then paste it into the web app's import box. The app parses that HTML locally.
 
-The database is not tied to one keyword set. A job can be discovered from any search setup, and your saved/applied/not-interested status stays attached to the LinkedIn job ID when the same job appears again.
+The database is not tied to one keyword set. A job can be discovered from multiple search setups, and the app records those source links separately while your saved/applied/not-interested status stays attached to the LinkedIn job ID.
 
-You do not need to give this app a LinkedIn login cookie for the public keyword searches. The exact LinkedIn AI search URL may require a logged-in browser session because LinkedIn returns a sign-in page to non-browser/public fetches.
+You do not need to give this app a LinkedIn login cookie for the public keyword searches. Manual LinkedIn URLs may require a logged-in browser session because LinkedIn can return a sign-in page to non-browser/public fetches.
 
 The parser stores the LinkedIn job ID plus visible result-card fields such as title, company, location, posting date, keyword, and source URL. For deadline, employment type, seniority, function, industries, applicants, and description, use `Enrich Details` or import a job detail page, because those fields are usually on the individual job page rather than the search result card.
 
@@ -127,8 +127,9 @@ The web page shows:
 - new, saved, and applied jobs with application metadata
 - a count of deleted jobs that are hidden from the interface
 - a count of jobs still needing detail enrichment
-- links to open each configured LinkedIn search
-- editable search setups for different keywords, locations, date windows, radii, sort modes, and optional LinkedIn AI-search links
+- links to open each generated LinkedIn keyword search
+- editable search setups for different keywords, locations, date windows, radii, sort modes, and optional manual LinkedIn links
+- source-aware filtering and search withdrawal that removes new jobs belonging only to that setup
 - a paste box for importing saved LinkedIn result-page HTML
 
 Each job card can show title, company, location, source keyword, posting date, deadline, employment type, seniority, job function, industries, applicant count, first/last seen, source link, detail-fetch status, and a description preview when available.

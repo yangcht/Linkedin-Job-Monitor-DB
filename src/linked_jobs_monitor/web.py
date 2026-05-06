@@ -14,13 +14,14 @@ from .database import (
     STATUS_NEW,
     STATUS_NOT_INTERESTED,
     STATUS_SAVED,
+    JobSourceRecord,
     JobRecord,
     SearchSource,
     open_database,
 )
 from .fetch import FetchError, fetch_searches, fetch_url
 from .linkedin import build_search_urls_for_source, unique_urls
-from .parser import extract_canonical_job_url, extract_detail_jobs, extract_jobs, merge_jobs
+from .parser import extract_canonical_job_url, extract_detail_jobs, extract_jobs
 
 
 VISIBLE_STATUSES = {STATUS_NEW, STATUS_SAVED, STATUS_APPLIED}
@@ -83,11 +84,11 @@ def build_handler(config: AppConfig):
             if not sources:
                 self.redirect("/", error="No active search sources. Add or enable a search first.")
                 return
-            searches = unique_urls(
+            searches = [
                 search
                 for source in sources
-                for search in build_search_urls_for_source(source)
-            )
+                for search in unique_urls(build_search_urls_for_source(source))
+            ]
             try:
                 pages = fetch_searches(
                     searches,
@@ -99,7 +100,13 @@ def build_handler(config: AppConfig):
                 return
 
             groups = [
-                extract_jobs(html_text, keyword=search.keyword, source_url=search.url)
+                extract_jobs(
+                    html_text,
+                    keyword=search.keyword,
+                    source_url=search.url,
+                    source_id=search.source_id,
+                    source_name=search.source_name,
+                )
                 for search, html_text in pages
             ]
             db = open_database(
@@ -107,7 +114,7 @@ def build_handler(config: AppConfig):
                 legacy_json_path=config.run.state_file,
                 seed_search_config=config.search,
             )
-            new_jobs = db.upsert_jobs(merge_jobs(groups))
+            new_jobs = db.upsert_jobs(job for group in groups for job in group)
             for source in sources:
                 db.mark_search_source_run(source.id)
             total = db.total_count()
@@ -238,6 +245,11 @@ def build_handler(config: AppConfig):
                 db.close()
                 self.redirect("/", message="Search source updated.")
                 return
+            if action == "withdraw":
+                removed = db.withdraw_search_source(source_id)
+                db.close()
+                self.redirect("/", message=f"Withdrew {source.name} and removed {removed} new jobs.")
+                return
             if action == "delete":
                 db.delete_search_source(source_id)
                 db.close()
@@ -367,6 +379,15 @@ def render_page(
     )
     sources = db.list_search_sources()
     all_jobs = db.list_jobs(include_hidden=True)
+    job_sources_by_job = db.job_sources_by_job()
+    source_counts = {
+        source.id: db.count_jobs_for_search_source(source.id)
+        for source in sources
+    }
+    withdraw_counts = {
+        source.id: db.count_withdrawable_jobs_for_search_source(source.id)
+        for source in sources
+    }
     new_count = db.count_by_status(STATUS_NEW)
     saved_count = db.count_by_status(STATUS_SAVED)
     applied_count = db.count_by_status(STATUS_APPLIED)
@@ -386,11 +407,32 @@ def render_page(
         for source in sources
         for keyword in source.keyword_list()
     }
+    job_source_keywords = {
+        source.keyword
+        for job_sources in job_sources_by_job.values()
+        for source in job_sources
+        if source.keyword
+    }
+    orphan_keywords = {
+        job.source_keyword
+        for job in all_jobs
+        if job.source_keyword and not job_sources_by_job.get(job.job_id)
+    }
     keyword_options = sorted(
-        {job.source_keyword for job in all_jobs if job.source_keyword} | source_keywords
+        source_keywords | job_source_keywords | orphan_keywords
     )
-    filtered_jobs = sort_jobs(filter_jobs(all_jobs, filters), filters["sort"])
-    default_ai_url = next((source.ai_search_url for source in sources if source.ai_search_url), "")
+    filtered_jobs = sort_jobs(
+        filter_jobs(all_jobs, filters, job_sources_by_job),
+        filters["sort"],
+    )
+    default_source_url = next(
+        (
+            search.url
+            for source in sources
+            for search in unique_urls(build_search_urls_for_source(source))
+        ),
+        "",
+    )
     db.close()
 
     return f"""<!doctype html>
@@ -431,7 +473,7 @@ def render_page(
       {summary_item(total_count, "Total Tracked")}
     </section>
 
-    {render_search_sources(config, sources)}
+    {render_search_sources(config, sources, source_counts, withdraw_counts)}
 
     <section class="jobs-panel">
       <div class="panel-heading">
@@ -440,8 +482,8 @@ def render_page(
           <p>{len(filtered_jobs)} shown · expand a row for details and tracking</p>
         </div>
       </div>
-      {render_filter_form(filters, keyword_options)}
-      {render_jobs(filtered_jobs, empty_text="No jobs match the current filters.")}
+      {render_filter_form(filters, keyword_options, sources)}
+      {render_jobs(filtered_jobs, job_sources_by_job, empty_text="No jobs match the current filters.")}
     </section>
 
     <section class="import">
@@ -454,7 +496,7 @@ def render_page(
           </label>
           <label>
             Source URL
-            <input name="source_url" value="{escape(default_ai_url)}" placeholder="https://www.linkedin.com/jobs/search-results/...">
+            <input name="source_url" value="{escape(default_source_url)}" placeholder="https://www.linkedin.com/jobs/search/...">
           </label>
         </div>
         <label>
@@ -473,7 +515,12 @@ def summary_item(count: int, label: str) -> str:
     return f"<div><span>{count}</span><p>{escape(label)}</p></div>"
 
 
-def render_search_sources(config: AppConfig, sources: List[SearchSource]) -> str:
+def render_search_sources(
+    config: AppConfig,
+    sources: List[SearchSource],
+    source_counts: Dict[int, Dict[str, int]],
+    withdraw_counts: Dict[int, int],
+) -> str:
     return f"""
     <section class="searches">
       <div class="panel-heading">
@@ -499,22 +546,27 @@ def render_search_sources(config: AppConfig, sources: List[SearchSource]) -> str
         )}
       </details>
       <div class="source-list">
-        {''.join(render_search_source(source) for source in sources)}
+        {''.join(render_search_source(source, source_counts.get(source.id, {}), withdraw_counts.get(source.id, 0)) for source in sources)}
       </div>
     </section>
     """
 
 
-def render_search_source(source: SearchSource) -> str:
+def render_search_source(
+    source: SearchSource,
+    counts: Dict[str, int],
+    withdraw_count: int,
+) -> str:
     status = "Active" if source.is_active else "Paused"
     toggle_label = "Pause" if source.is_active else "Enable"
     run_text = source.last_run_at or "never"
+    visible_count = sum(counts.get(status, 0) for status in VISIBLE_STATUSES)
     return f"""
       <article class="source-card">
         <div class="source-head">
           <div>
             <h3>{escape(source.name)}</h3>
-            <p>{escape(source.keywords)} · {escape(source.location)} · past {source.posted_within_days} days · {source.radius_km} km · {status} · last run {escape(format_value(run_text))}</p>
+            <p>{escape(source.keywords)} · {escape(source.location)} · past {source.posted_within_days} days · {source.radius_km} km · {status} · {visible_count} visible · last run {escape(format_value(run_text))}</p>
           </div>
           <div class="source-actions">
             <form method="post" action="/searches/{source.id}/refresh">
@@ -523,6 +575,9 @@ def render_search_source(source: SearchSource) -> str:
             <form method="post" action="/searches/{source.id}/toggle">
               <button type="submit">{toggle_label}</button>
             </form>
+            <form method="post" action="/searches/{source.id}/withdraw">
+              <button class="danger" type="submit">Withdraw ({withdraw_count})</button>
+            </form>
             <form method="post" action="/searches/{source.id}/delete">
               <button class="danger" type="submit">Remove</button>
             </form>
@@ -530,7 +585,7 @@ def render_search_source(source: SearchSource) -> str:
         </div>
         <div class="search-grid">
           {''.join(render_search_link(search.keyword, search.url) for search in unique_urls(build_search_urls_for_source(source)))}
-          {render_ai_search_link(source.ai_search_url)}
+          {render_manual_search_link(source.ai_search_url)}
         </div>
         <details class="edit-search">
           <summary>Edit setup</summary>
@@ -600,8 +655,8 @@ def render_search_source_form(
             </select>
           </label>
           <label>
-            LinkedIn AI search URL
-            <input name="ai_search_url" value="{escape(ai_search_url)}" placeholder="Optional logged-in AI search URL">
+            Manual LinkedIn URL
+            <input name="ai_search_url" value="{escape(ai_search_url)}" placeholder="Optional browser/import URL">
           </label>
         </div>
         <label class="checkbox-label">
@@ -613,17 +668,26 @@ def render_search_source_form(
     """
 
 
-def render_jobs(jobs: List[JobRecord], empty_text: str = "") -> str:
+def render_jobs(
+    jobs: List[JobRecord],
+    job_sources_by_job: Dict[str, List[JobSourceRecord]],
+    empty_text: str = "",
+) -> str:
     if not jobs:
         return f'<p class="empty">{escape(empty_text)}</p>'
-    return '<div class="job-list">' + "".join(render_job(job) for job in jobs) + "</div>"
+    return (
+        '<div class="job-list">'
+        + "".join(render_job(job, job_sources_by_job.get(job.job_id, [])) for job in jobs)
+        + "</div>"
+    )
 
 
-def render_job(job: JobRecord) -> str:
+def render_job(job: JobRecord, job_sources: List[JobSourceRecord]) -> str:
     title = escape(job.title or f"LinkedIn job {job.job_id}")
     company = escape(job.company or "Unknown company")
     location = escape(job.location or "Unknown location")
-    keyword = escape(job.source_keyword or "no keyword")
+    source_keyword = next((source.keyword for source in job_sources if source.keyword), "")
+    keyword = escape(source_keyword or job.source_keyword or "no keyword")
     deadline_class = "fact-warn" if not job.application_deadline else ""
     description = render_description(job.description)
     deadline = job.application_deadline or "No deadline"
@@ -653,6 +717,7 @@ def render_job(job: JobRecord) -> str:
           <div class="chips">
             {chip(job.user_status.replace("_", " ").title())}
             {chip("Keyword: " + keyword)}
+            {render_job_source_chips(job_sources)}
             {chip(job.application_status) if job.application_status else ""}
             {chip(job.insight) if job.insight else ""}
           </div>
@@ -687,13 +752,18 @@ def read_filters(query_params: Dict[str, List[str]]) -> Dict[str, str]:
     return {
         "q": first_value(query_params, "q").strip(),
         "status": first_value(query_params, "status") or "visible",
+        "source": first_value(query_params, "source"),
         "keyword": first_value(query_params, "keyword"),
         "details": first_value(query_params, "details") or "all",
         "sort": first_value(query_params, "sort") or "posted_desc",
     }
 
 
-def filter_jobs(jobs: List[JobRecord], filters: Dict[str, str]) -> List[JobRecord]:
+def filter_jobs(
+    jobs: List[JobRecord],
+    filters: Dict[str, str],
+    job_sources_by_job: Dict[str, List[JobSourceRecord]],
+) -> List[JobRecord]:
     result = list(jobs)
     status = filters["status"]
     if status == "visible":
@@ -701,9 +771,31 @@ def filter_jobs(jobs: List[JobRecord], filters: Dict[str, str]) -> List[JobRecor
     elif status != "all":
         result = [job for job in result if job.user_status == status]
 
+    source_id = parse_int(filters["source"], 0)
+    if source_id:
+        result = [
+            job
+            for job in result
+            if any(
+                source.search_source_id == source_id
+                for source in job_sources_by_job.get(job.job_id, [])
+            )
+        ]
+
     keyword = filters["keyword"]
     if keyword:
-        result = [job for job in result if job.source_keyword == keyword]
+        result = [
+            job
+            for job in result
+            if any(
+                source.keyword == keyword
+                for source in job_sources_by_job.get(job.job_id, [])
+            )
+            or (
+                not job_sources_by_job.get(job.job_id)
+                and job.source_keyword == keyword
+            )
+        ]
 
     details = filters["details"]
     if details == "needs_details":
@@ -766,10 +858,18 @@ def searchable_text(job: JobRecord) -> str:
     return " ".join(fields).lower()
 
 
-def render_filter_form(filters: Dict[str, str], keyword_options: List[str]) -> str:
+def render_filter_form(
+    filters: Dict[str, str],
+    keyword_options: List[str],
+    sources: List[SearchSource],
+) -> str:
     keyword_select = select_options(
         [("", "All keywords")] + [(keyword, keyword) for keyword in keyword_options],
         filters["keyword"],
+    )
+    source_select = select_options(
+        [("", "All setups")] + [(str(source.id), source.name) for source in sources],
+        filters["source"],
     )
     return f"""
       <form class="filters" method="get" action="/">
@@ -790,6 +890,10 @@ def render_filter_form(filters: Dict[str, str], keyword_options: List[str]) -> s
                 (STATUS_NOT_INTERESTED, "Not Interested"),
             ], filters["status"])}
           </select>
+        </label>
+        <label>
+          Setup
+          <select name="source">{source_select}</select>
         </label>
         <label>
           Keyword
@@ -839,6 +943,22 @@ def chip(value: str) -> str:
     if not value:
         return ""
     return f'<span class="chip">{escape(value)}</span>'
+
+
+def render_job_source_chips(job_sources: List[JobSourceRecord]) -> str:
+    labels = []
+    for source in job_sources:
+        if source.search_source_name and source.keyword:
+            labels.append(f"{source.search_source_name}: {source.keyword}")
+        elif source.keyword:
+            labels.append(source.keyword)
+        elif source.search_source_name:
+            labels.append(source.search_source_name)
+    unique_labels = sorted(dict.fromkeys(labels))
+    visible_labels = unique_labels[:4]
+    if len(unique_labels) > 4:
+        visible_labels.append(f"+{len(unique_labels) - 4} more sources")
+    return "".join(chip(label) for label in visible_labels)
 
 
 def fact(label: str, value: str, class_name: str = "") -> str:
@@ -945,10 +1065,10 @@ def render_search_link(keyword: str, url: str) -> str:
     )
 
 
-def render_ai_search_link(url: str) -> str:
+def render_manual_search_link(url: str) -> str:
     if not url:
         return ""
-    return f'<a href="{escape(url)}" target="_blank" rel="noreferrer">LinkedIn AI Search</a>'
+    return f'<a href="{escape(url)}" target="_blank" rel="noreferrer">Manual LinkedIn URL</a>'
 
 
 def render_notice(text: Optional[str], class_name: str) -> str:
@@ -1249,7 +1369,7 @@ button.danger {
 
 .filters {
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) minmax(130px, 1fr) minmax(130px, 1fr) minmax(150px, 1fr) minmax(160px, 1fr) auto;
+  grid-template-columns: minmax(220px, 2fr) repeat(5, minmax(120px, 1fr)) auto;
   gap: 10px;
   align-items: end;
   margin: 16px 0;

@@ -99,7 +99,7 @@ def command_urls(config: AppConfig) -> int:
         for search in unique_urls(build_search_urls_for_source(source)):
             print(f"  {search.keyword}: {search.url}")
         if source.ai_search_url:
-            print(f"  AI search: {source.ai_search_url}")
+            print(f"  Manual LinkedIn URL: {source.ai_search_url}")
     return 0
 
 
@@ -118,7 +118,7 @@ def command_open(config: AppConfig) -> int:
             webbrowser.open_new_tab(search.url)
             opened += 1
         if source.ai_search_url:
-            print(f"Opening {source.name} AI search: {source.ai_search_url}")
+            print(f"Opening {source.name} manual LinkedIn URL: {source.ai_search_url}")
             webbrowser.open_new_tab(source.ai_search_url)
             opened += 1
     print(f"Opened {opened} searches.")
@@ -132,11 +132,11 @@ def command_check(config: AppConfig) -> int:
         seed_search_config=config.search,
     )
     sources = db.list_search_sources(active_only=True)
-    searches = unique_urls(
+    searches = [
         search
         for source in sources
-        for search in build_search_urls_for_source(source)
-    )
+        for search in unique_urls(build_search_urls_for_source(source))
+    ]
     if not searches:
         db.close()
         print("No active search sources. Add one in the web app first.", file=sys.stderr)
@@ -154,13 +154,19 @@ def command_check(config: AppConfig) -> int:
         return 1
 
     groups = [
-        extract_jobs(html_text, keyword=search.keyword, source_url=search.url)
+        extract_jobs(
+            html_text,
+            keyword=search.keyword,
+            source_url=search.url,
+            source_id=search.source_id,
+            source_name=search.source_name,
+        )
         for search, html_text in pages
     ]
     for source in sources:
         db.mark_search_source_run(source.id)
     db.close()
-    return record_and_report(config, merge_jobs(groups))
+    return record_and_report(config, [job for group in groups for job in group])
 
 
 def command_import_html(config: AppConfig, html_files: Iterable[Path]) -> int:

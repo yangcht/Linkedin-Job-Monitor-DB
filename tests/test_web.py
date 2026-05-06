@@ -4,7 +4,7 @@ from pathlib import Path
 
 from linked_jobs_monitor.config import AppConfig, RunConfig, SearchConfig
 from linked_jobs_monitor.database import open_database
-from linked_jobs_monitor.parser import extract_jobs
+from linked_jobs_monitor.parser import JobListing, extract_jobs
 from linked_jobs_monitor.web import render_page
 from test_parser import SEARCH_HTML
 
@@ -76,6 +76,45 @@ class WebTests(unittest.TestCase):
         self.assertIn("Add a new search setup", page)
         self.assertIn("Default LinkedIn search", page)
         self.assertIn("Refresh This", page)
+        self.assertIn("Withdraw", page)
+        self.assertIn("Manual LinkedIn URL", page)
+        self.assertNotIn("LinkedIn AI search URL", page)
+
+    def test_keyword_filter_uses_all_recorded_sources(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = make_config(tmp)
+            db = open_database(config.run.db_file)
+            source_id = db.add_search_source(
+                name="Logistics",
+                keywords="logistics",
+                location="Gothenburg, Sweden",
+            )
+            db.upsert_jobs(
+                [
+                    JobListing(
+                        job_id="900",
+                        url="https://www.linkedin.com/jobs/view/900/",
+                        title="Shared Role",
+                        keyword="logistics",
+                        source_url="https://www.linkedin.com/jobs/search/?keywords=logistics",
+                        source_id=source_id,
+                        source_name="Logistics",
+                    ),
+                    JobListing(
+                        job_id="900",
+                        url="https://www.linkedin.com/jobs/view/900/",
+                        title="Shared Role",
+                        keyword="Azure",
+                        source_url="https://www.linkedin.com/jobs/search/?keywords=Azure",
+                    ),
+                ]
+            )
+            db.close()
+
+            page = render_page(config, query_params={"keyword": ["logistics"]})
+
+        self.assertIn("Shared Role", page)
+        self.assertIn('<option value="logistics" selected>logistics</option>', page)
 
 
 def make_config(tmp: str) -> AppConfig:

@@ -11,7 +11,7 @@ The app is a local job-search tracker for LinkedIn Jobs. It should help with thr
 ## Important Constraints
 
 - The app does not store LinkedIn login cookies.
-- The exact LinkedIn AI search URL can require a logged-in browser session. When LinkedIn returns a sign-in page to the local fetcher, the app should not try to bypass it. The user can open that URL in their browser and paste/import the saved HTML.
+- A manual LinkedIn URL can require a logged-in browser session. When LinkedIn returns a sign-in page to the local fetcher, the app should not try to bypass it. The user can open that URL in their browser and paste/import the saved HTML.
 - LinkedIn public pages sometimes expose search cards without job details. Deadline and richer metadata usually come from public job-detail pages via JSON-LD, or from pasted detail-page HTML.
 
 ## Components
@@ -27,8 +27,9 @@ The app is a local job-search tracker for LinkedIn Jobs. It should help with thr
 
 One SQLite database lives at `.job_state/jobs.sqlite3`. It has two main tables:
 
-- `search_sources`: editable search setups used by refresh. Each source stores a display name, keywords, location, LinkedIn `geo_id`, radius, posted-within window, sort mode, active/paused state, optional AI-search URL, and last-run time.
+- `search_sources`: editable search setups used by refresh. Each source stores a display name, keywords, location, LinkedIn `geo_id`, radius, posted-within window, sort mode, active/paused state, optional manual LinkedIn URL, and last-run time.
 - `jobs`: LinkedIn jobs plus local application tracking state.
+- `job_sources`: source provenance linking one LinkedIn job to each search setup/keyword URL that found it.
 
 `config.ini` seeds the first `search_sources` row when the table is empty. After that, the web UI is the normal place to add, edit, pause, refresh, or remove search setups.
 
@@ -64,7 +65,7 @@ User tracking fields:
 
 `not_interested` jobs are hidden from the normal interface but remain in the database, so future imports do not re-add them as new jobs.
 
-Deleting a search setup does not delete jobs. This lets the database contain jobs discovered by many keyword/location combinations over time.
+Deleting a search setup leaves jobs in place. Withdrawing a setup removes only new jobs that are exclusive to that setup, then detaches the setup from any saved, applied, or shared jobs.
 
 ## Test Plan
 

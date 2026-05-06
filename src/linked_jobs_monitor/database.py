@@ -5,9 +5,10 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from .config import SearchConfig
+from .linkedin import build_search_urls_for_source
 
 from .parser import JobListing, extract_job_id_from_url
 
@@ -79,6 +80,17 @@ class SearchSource:
         return split_keywords(self.keywords)
 
 
+@dataclass(frozen=True)
+class JobSourceRecord:
+    job_id: str
+    search_source_id: int
+    search_source_name: str
+    keyword: str
+    source_url: str
+    first_seen_at: str
+    last_seen_at: str
+
+
 class JobDatabase:
     def __init__(
         self,
@@ -97,6 +109,7 @@ class JobDatabase:
             self.seed_search_source(seed_search_config)
         if legacy_json_path:
             self.migrate_legacy_json(legacy_json_path)
+        self.backfill_job_sources_from_jobs()
 
     def close(self) -> None:
         self.conn.close()
@@ -162,6 +175,23 @@ class JobDatabase:
         )
         self.conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_search_sources_active ON search_sources(is_active)"
+        )
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS job_sources (
+                job_id TEXT NOT NULL,
+                search_source_id INTEGER NOT NULL DEFAULT 0,
+                search_source_name TEXT NOT NULL DEFAULT '',
+                keyword TEXT NOT NULL DEFAULT '',
+                source_url TEXT NOT NULL DEFAULT '',
+                first_seen_at TEXT NOT NULL,
+                last_seen_at TEXT NOT NULL,
+                PRIMARY KEY (job_id, search_source_id, keyword, source_url)
+            )
+            """
+        )
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_job_sources_source ON job_sources(search_source_id)"
         )
         self.conn.commit()
 
@@ -237,6 +267,7 @@ class JobDatabase:
                 inserted = self.get_job(listing.job_id)
                 if inserted:
                     new_jobs.append(inserted)
+                self.record_job_source(listing, timestamp)
             else:
                 self.conn.execute(
                     """
@@ -256,8 +287,8 @@ class JobDatabase:
                         applicants = COALESCE(NULLIF(?, ''), applicants),
                         description = COALESCE(NULLIF(?, ''), description),
                         insight = COALESCE(NULLIF(?, ''), insight),
-                        source_keyword = COALESCE(NULLIF(?, ''), source_keyword),
-                        source_url = COALESCE(NULLIF(?, ''), source_url),
+                        source_keyword = COALESCE(NULLIF(source_keyword, ''), ?),
+                        source_url = COALESCE(NULLIF(source_url, ''), ?),
                         last_seen_at = ?,
                         details_fetched_at = CASE WHEN ? != '' THEN ? ELSE details_fetched_at END,
                         updated_at = ?
@@ -265,6 +296,7 @@ class JobDatabase:
                     """,
                     job_update_values(listing, timestamp),
                 )
+                self.record_job_source(listing, timestamp)
         self.conn.commit()
         return new_jobs
 
@@ -296,6 +328,125 @@ class JobDatabase:
             (status,),
         ).fetchone()
         return int(row["count"])
+
+    def list_job_sources(self, job_id: Optional[str] = None) -> List[JobSourceRecord]:
+        query = "SELECT * FROM job_sources"
+        params = []
+        if job_id:
+            query += " WHERE job_id = ?"
+            params.append(job_id)
+        query += " ORDER BY search_source_name, keyword, source_url"
+        return [
+            row_to_job_source(row)
+            for row in self.conn.execute(query, params).fetchall()
+        ]
+
+    def job_sources_by_job(self) -> Dict[str, List[JobSourceRecord]]:
+        result: Dict[str, List[JobSourceRecord]] = {}
+        for source in self.list_job_sources():
+            result.setdefault(source.job_id, []).append(source)
+        return result
+
+    def count_jobs_for_search_source(self, source_id: int) -> Dict[str, int]:
+        rows = self.conn.execute(
+            """
+            SELECT jobs.user_status, COUNT(DISTINCT jobs.job_id) AS count
+            FROM jobs
+            JOIN job_sources ON job_sources.job_id = jobs.job_id
+            WHERE job_sources.search_source_id = ?
+            GROUP BY jobs.user_status
+            """,
+            (source_id,),
+        ).fetchall()
+        return {str(row["user_status"]): int(row["count"]) for row in rows}
+
+    def count_withdrawable_jobs_for_search_source(self, source_id: int) -> int:
+        row = self.conn.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM jobs
+            WHERE user_status = ?
+              AND EXISTS (
+                  SELECT 1
+                  FROM job_sources
+                  WHERE job_sources.job_id = jobs.job_id
+                    AND job_sources.search_source_id = ?
+              )
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM job_sources
+                  WHERE job_sources.job_id = jobs.job_id
+                    AND job_sources.search_source_id != ?
+              )
+            """,
+            (STATUS_NEW, source_id, source_id),
+        ).fetchone()
+        return int(row["count"])
+
+    def withdraw_search_source(self, source_id: int) -> int:
+        rows = self.conn.execute(
+            """
+            SELECT job_id
+            FROM jobs
+            WHERE user_status = ?
+              AND EXISTS (
+                  SELECT 1
+                  FROM job_sources
+                  WHERE job_sources.job_id = jobs.job_id
+                    AND job_sources.search_source_id = ?
+              )
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM job_sources
+                  WHERE job_sources.job_id = jobs.job_id
+                    AND job_sources.search_source_id != ?
+              )
+            """,
+            (STATUS_NEW, source_id, source_id),
+        ).fetchall()
+        job_ids = [str(row["job_id"]) for row in rows]
+        detached_rows = self.conn.execute(
+            """
+            SELECT job_id
+            FROM jobs
+            WHERE user_status != ?
+              AND EXISTS (
+                  SELECT 1
+                  FROM job_sources
+                  WHERE job_sources.job_id = jobs.job_id
+                    AND job_sources.search_source_id = ?
+              )
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM job_sources
+                  WHERE job_sources.job_id = jobs.job_id
+                    AND job_sources.search_source_id != ?
+              )
+            """,
+            (STATUS_NEW, source_id, source_id),
+        ).fetchall()
+        detached_job_ids = [str(row["job_id"]) for row in detached_rows]
+        if job_ids:
+            self.conn.executemany(
+                "DELETE FROM job_sources WHERE job_id = ?",
+                [(job_id,) for job_id in job_ids],
+            )
+            self.conn.executemany(
+                "DELETE FROM jobs WHERE job_id = ?",
+                [(job_id,) for job_id in job_ids],
+            )
+        self.conn.execute(
+            "DELETE FROM job_sources WHERE search_source_id = ?",
+            (source_id,),
+        )
+        if detached_job_ids:
+            self.conn.executemany(
+                "UPDATE jobs SET source_keyword = '', source_url = '' WHERE job_id = ?",
+                [(job_id,) for job_id in detached_job_ids],
+            )
+        self.conn.execute("DELETE FROM search_sources WHERE id = ?", (source_id,))
+        self.conn.commit()
+        return len(job_ids)
 
     def total_count(self) -> int:
         row = self.conn.execute("SELECT COUNT(*) AS count FROM jobs").fetchone()
@@ -464,6 +615,31 @@ class JobDatabase:
         return True
 
     def delete_search_source(self, source_id: int) -> bool:
+        detached_rows = self.conn.execute(
+            """
+            SELECT job_id
+            FROM jobs
+            WHERE EXISTS (
+                  SELECT 1
+                  FROM job_sources
+                  WHERE job_sources.job_id = jobs.job_id
+                    AND job_sources.search_source_id = ?
+              )
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM job_sources
+                  WHERE job_sources.job_id = jobs.job_id
+                    AND job_sources.search_source_id != ?
+              )
+            """,
+            (source_id, source_id),
+        ).fetchall()
+        self.conn.execute("DELETE FROM job_sources WHERE search_source_id = ?", (source_id,))
+        if detached_rows:
+            self.conn.executemany(
+                "UPDATE jobs SET source_keyword = '', source_url = '' WHERE job_id = ?",
+                [(str(row["job_id"]),) for row in detached_rows],
+            )
         cursor = self.conn.execute("DELETE FROM search_sources WHERE id = ?", (source_id,))
         self.conn.commit()
         return cursor.rowcount > 0
@@ -492,6 +668,78 @@ class JobDatabase:
             params.append(1)
         query += " ORDER BY is_active DESC, updated_at DESC, id ASC"
         return [row_to_search_source(row) for row in self.conn.execute(query, params).fetchall()]
+
+    def record_job_source(self, listing: JobListing, timestamp: str) -> None:
+        if not should_record_job_source(listing):
+            return
+        self.conn.execute(
+            """
+            INSERT INTO job_sources (
+                job_id, search_source_id, search_source_name, keyword,
+                source_url, first_seen_at, last_seen_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(job_id, search_source_id, keyword, source_url) DO UPDATE SET
+                search_source_name = COALESCE(NULLIF(excluded.search_source_name, ''), job_sources.search_source_name),
+                last_seen_at = excluded.last_seen_at
+            """,
+            (
+                listing.job_id,
+                int(listing.source_id),
+                listing.source_name,
+                listing.keyword,
+                listing.source_url,
+                timestamp,
+                timestamp,
+            ),
+        )
+
+    def backfill_job_sources_from_jobs(self) -> None:
+        rows = self.conn.execute(
+            """
+            SELECT job_id, source_keyword, source_url, first_seen_at, last_seen_at
+            FROM jobs
+            WHERE (source_keyword != '' OR source_url != '')
+              AND NOT EXISTS (
+                  SELECT 1 FROM job_sources WHERE job_sources.job_id = jobs.job_id
+              )
+            """
+        ).fetchall()
+        if not rows:
+            return
+
+        sources = self.list_search_sources()
+        source_urls = {
+            (search.keyword, search.url): source
+            for source in sources
+            for search in build_search_urls_for_source(source)
+        }
+        sources_by_keyword: Dict[str, List[SearchSource]] = {}
+        for source in sources:
+            for keyword in source.keyword_list():
+                sources_by_keyword.setdefault(keyword, []).append(source)
+
+        for row in rows:
+            keyword = str(row["source_keyword"])
+            source_url = str(row["source_url"])
+            source = source_urls.get((keyword, source_url))
+            if source is None:
+                matches = sources_by_keyword.get(keyword, [])
+                if len(matches) == 1:
+                    source = matches[0]
+            if source is None:
+                continue
+
+            listing = JobListing(
+                job_id=str(row["job_id"]),
+                url="",
+                keyword=keyword,
+                source_url=source_url,
+                source_id=source.id if source else 0,
+                source_name=source.name if source else "",
+            )
+            timestamp = str(row["last_seen_at"] or row["first_seen_at"] or utc_now())
+            self.record_job_source(listing, timestamp)
+        self.conn.commit()
 
 
 def open_database(
@@ -584,6 +832,16 @@ def row_to_search_source(row: sqlite3.Row) -> SearchSource:
     values = {key: row[key] for key in row.keys()}
     values["is_active"] = bool(values["is_active"])
     return SearchSource(**values)
+
+
+def row_to_job_source(row: sqlite3.Row) -> JobSourceRecord:
+    return JobSourceRecord(**{key: row[key] for key in row.keys()})
+
+
+def should_record_job_source(listing: JobListing) -> bool:
+    if not (listing.source_id or listing.source_url):
+        return False
+    return "/jobs/view/" not in listing.source_url
 
 
 def map_legacy_status(status: str) -> str:

@@ -32,6 +32,8 @@ class JobListing:
     title: str = ""
     keyword: str = ""
     source_url: str = ""
+    source_id: int = 0
+    source_name: str = ""
     company: str = ""
     company_url: str = ""
     location: str = ""
@@ -51,13 +53,29 @@ def extract_jobs(
     html_text: str,
     keyword: Optional[str] = None,
     source_url: str = "",
+    source_id: int = 0,
+    source_name: str = "",
 ) -> List[JobListing]:
     """Extract LinkedIn jobs from search-result or detail-page HTML."""
-    search_cards = extract_search_cards(html_text, keyword=keyword, source_url=source_url)
+    search_cards = extract_search_cards(
+        html_text,
+        keyword=keyword,
+        source_url=source_url,
+        source_id=source_id,
+        source_name=source_name,
+    )
     detail_jobs = extract_detail_jobs(html_text, keyword=keyword, source_url=source_url)
     groups = [search_cards, detail_jobs]
     if not search_cards and not detail_jobs:
-        groups.append(extract_fallback_jobs(html_text, keyword=keyword, source_url=source_url))
+        groups.append(
+            extract_fallback_jobs(
+                html_text,
+                keyword=keyword,
+                source_url=source_url,
+                source_id=source_id,
+                source_name=source_name,
+            )
+        )
     return merge_jobs(groups)
 
 
@@ -65,8 +83,15 @@ def extract_search_cards(
     html_text: str,
     keyword: Optional[str] = None,
     source_url: str = "",
+    source_id: int = 0,
+    source_name: str = "",
 ) -> List[JobListing]:
-    parser = LinkedInSearchCardParser(keyword=keyword or "", source_url=source_url)
+    parser = LinkedInSearchCardParser(
+        keyword=keyword or "",
+        source_url=source_url,
+        source_id=source_id,
+        source_name=source_name,
+    )
     parser.feed(html_text)
     return parser.jobs
 
@@ -128,6 +153,8 @@ def extract_fallback_jobs(
     html_text: str,
     keyword: Optional[str] = None,
     source_url: str = "",
+    source_id: int = 0,
+    source_name: str = "",
 ) -> List[JobListing]:
     jobs: Dict[str, JobListing] = {}
 
@@ -142,6 +169,8 @@ def extract_fallback_jobs(
             title=extract_nearby_title(html_text, match.start()),
             keyword=keyword or "",
             source_url=source_url,
+            source_id=source_id,
+            source_name=source_name,
         )
 
     for match in JOB_ID_RE.finditer(html_text):
@@ -154,6 +183,8 @@ def extract_fallback_jobs(
                 title=extract_nearby_title(html_text, match.start()),
                 keyword=keyword or "",
                 source_url=source_url,
+                source_id=source_id,
+                source_name=source_name,
             ),
         )
 
@@ -409,10 +440,18 @@ def merge_job(existing: JobListing, incoming: JobListing) -> JobListing:
 
 
 class LinkedInSearchCardParser(HTMLParser):
-    def __init__(self, keyword: str, source_url: str) -> None:
+    def __init__(
+        self,
+        keyword: str,
+        source_url: str,
+        source_id: int = 0,
+        source_name: str = "",
+    ) -> None:
         super().__init__(convert_charrefs=False)
         self.keyword = keyword
         self.source_url = source_url
+        self.source_id = source_id
+        self.source_name = source_name
         self.jobs: List[JobListing] = []
         self.current: Optional[Dict[str, str]] = None
         self.depth = 0
@@ -520,6 +559,8 @@ class LinkedInSearchCardParser(HTMLParser):
                     title=self.current.get("title", ""),
                     keyword=self.keyword,
                     source_url=self.source_url,
+                    source_id=self.source_id,
+                    source_name=self.source_name,
                     company=self.current.get("company", ""),
                     company_url=self.current.get("company_url", ""),
                     location=self.current.get("location", ""),
