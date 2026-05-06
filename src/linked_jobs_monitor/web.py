@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from html import escape
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-import time
 import re
+import secrets
+import time
 from typing import Dict, List, Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
@@ -25,6 +26,7 @@ from .parser import extract_canonical_job_url, extract_detail_jobs, extract_jobs
 
 
 VISIBLE_STATUSES = {STATUS_NEW, STATUS_SAVED, STATUS_APPLIED}
+CSRF_FIELD = "_csrf_token"
 
 
 def serve(config: AppConfig, host: str, port: int) -> None:
@@ -36,6 +38,8 @@ def serve(config: AppConfig, host: str, port: int) -> None:
 
 
 def build_handler(config: AppConfig):
+    csrf_token = secrets.token_urlsafe(32)
+
     class LinkedJobsHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             parsed = urlparse(self.path)
@@ -45,11 +49,20 @@ def build_handler(config: AppConfig):
             query = parse_qs(parsed.query)
             message = first_value(query, "message")
             error = first_value(query, "error")
-            body = render_page(config, message=message, error=error, query_params=query)
+            body = render_page(
+                config,
+                message=message,
+                error=error,
+                query_params=query,
+                csrf_token=csrf_token,
+            )
             self.respond_html(body)
 
         def do_POST(self) -> None:
             parsed = urlparse(self.path)
+            if not is_valid_csrf(self.read_form(), csrf_token):
+                self.send_error(403, "Invalid form token.")
+                return
             if parsed.path == "/refresh":
                 self.refresh_jobs()
                 return
@@ -180,8 +193,20 @@ def build_handler(config: AppConfig):
                 legacy_json_path=config.run.state_file,
                 seed_search_config=config.search,
             )
+            source_id, source_name, matched_keyword = find_matching_source_context(
+                db.list_search_sources(),
+                keyword,
+                source_url,
+            )
+            effective_keyword = matched_keyword or keyword
             new_jobs = db.upsert_jobs(
-                extract_jobs(html_text, keyword=keyword or None, source_url=source_url)
+                extract_jobs(
+                    html_text,
+                    keyword=effective_keyword or None,
+                    source_url=source_url,
+                    source_id=source_id,
+                    source_name=source_name,
+                )
             )
             total = db.total_count()
             db.close()
@@ -328,9 +353,16 @@ def build_handler(config: AppConfig):
             self.redirect("/", message=message)
 
         def read_form(self) -> Dict[str, List[str]]:
-            length = min(int(self.headers.get("Content-Length", "0")), 1_048_576)
+            if hasattr(self, "_form_cache"):
+                return self._form_cache
+            try:
+                content_length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                content_length = 0
+            length = min(max(content_length, 0), 1_048_576)
             raw_body = self.rfile.read(length).decode("utf-8", errors="replace")
-            return parse_qs(raw_body, keep_blank_values=True)
+            self._form_cache = parse_qs(raw_body, keep_blank_values=True)
+            return self._form_cache
 
         def redirect(
             self,
@@ -369,6 +401,7 @@ def render_page(
     message: Optional[str] = None,
     error: Optional[str] = None,
     query_params: Optional[Dict[str, List[str]]] = None,
+    csrf_token: str = "",
 ) -> str:
     query_params = query_params or {}
     filters = read_filters(query_params)
@@ -452,9 +485,11 @@ def render_page(
       </div>
       <div class="top-actions">
         <form method="post" action="/refresh">
+          {csrf_input(csrf_token)}
           <button class="primary" type="submit">Refresh Active Searches</button>
         </form>
         <form method="post" action="/enrich">
+          {csrf_input(csrf_token)}
           <button type="submit">Enrich Details</button>
         </form>
       </div>
@@ -473,7 +508,7 @@ def render_page(
       {summary_item(total_count, "Total Tracked")}
     </section>
 
-    {render_search_sources(config, sources, source_counts, withdraw_counts)}
+    {render_search_sources(config, sources, source_counts, withdraw_counts, csrf_token)}
 
     <section class="jobs-panel">
       <div class="panel-heading">
@@ -483,12 +518,13 @@ def render_page(
         </div>
       </div>
       {render_filter_form(filters, keyword_options, sources)}
-      {render_jobs(filtered_jobs, job_sources_by_job, empty_text="No jobs match the current filters.")}
+      {render_jobs(filtered_jobs, job_sources_by_job, csrf_token, empty_text="No jobs match the current filters.")}
     </section>
 
     <section class="import">
       <h2>Import Saved LinkedIn HTML</h2>
       <form method="post" action="/import">
+        {csrf_input(csrf_token)}
         <div class="inline-fields">
           <label>
             Keyword
@@ -520,6 +556,7 @@ def render_search_sources(
     sources: List[SearchSource],
     source_counts: Dict[int, Dict[str, int]],
     withdraw_counts: Dict[int, int],
+    csrf_token: str,
 ) -> str:
     return f"""
     <section class="searches">
@@ -543,10 +580,11 @@ def render_search_sources(
             ai_search_url="",
             is_active=True,
             submit_label="Add Search",
+            csrf_token=csrf_token,
         )}
       </details>
       <div class="source-list">
-        {''.join(render_search_source(source, source_counts.get(source.id, {}), withdraw_counts.get(source.id, 0)) for source in sources)}
+        {''.join(render_search_source(source, source_counts.get(source.id, {}), withdraw_counts.get(source.id, 0), csrf_token) for source in sources)}
       </div>
     </section>
     """
@@ -556,6 +594,7 @@ def render_search_source(
     source: SearchSource,
     counts: Dict[str, int],
     withdraw_count: int,
+    csrf_token: str,
 ) -> str:
     status = "Active" if source.is_active else "Paused"
     toggle_label = "Pause" if source.is_active else "Enable"
@@ -570,15 +609,19 @@ def render_search_source(
           </div>
           <div class="source-actions">
             <form method="post" action="/searches/{source.id}/refresh">
+              {csrf_input(csrf_token)}
               <button class="primary" type="submit">Refresh This</button>
             </form>
             <form method="post" action="/searches/{source.id}/toggle">
+              {csrf_input(csrf_token)}
               <button type="submit">{toggle_label}</button>
             </form>
             <form method="post" action="/searches/{source.id}/withdraw">
+              {csrf_input(csrf_token)}
               <button class="danger" type="submit">Withdraw ({withdraw_count})</button>
             </form>
             <form method="post" action="/searches/{source.id}/delete">
+              {csrf_input(csrf_token)}
               <button class="danger" type="submit">Remove</button>
             </form>
           </div>
@@ -601,6 +644,7 @@ def render_search_source(
               ai_search_url=source.ai_search_url,
               is_active=source.is_active,
               submit_label="Save Setup",
+              csrf_token=csrf_token,
           )}
         </details>
       </article>
@@ -619,10 +663,12 @@ def render_search_source_form(
     ai_search_url: str,
     is_active: bool,
     submit_label: str,
+    csrf_token: str,
 ) -> str:
     checked = " checked" if is_active else ""
     return f"""
       <form class="search-source-form" method="post" action="{escape(action)}">
+        {csrf_input(csrf_token)}
         <div class="form-grid">
           <label>
             Name
@@ -671,18 +717,26 @@ def render_search_source_form(
 def render_jobs(
     jobs: List[JobRecord],
     job_sources_by_job: Dict[str, List[JobSourceRecord]],
+    csrf_token: str = "",
     empty_text: str = "",
 ) -> str:
     if not jobs:
         return f'<p class="empty">{escape(empty_text)}</p>'
     return (
         '<div class="job-list">'
-        + "".join(render_job(job, job_sources_by_job.get(job.job_id, [])) for job in jobs)
+        + "".join(
+            render_job(job, job_sources_by_job.get(job.job_id, []), csrf_token)
+            for job in jobs
+        )
         + "</div>"
     )
 
 
-def render_job(job: JobRecord, job_sources: List[JobSourceRecord]) -> str:
+def render_job(
+    job: JobRecord,
+    job_sources: List[JobSourceRecord],
+    csrf_token: str = "",
+) -> str:
     title = escape(job.title or f"LinkedIn job {job.job_id}")
     company = escape(job.company or "Unknown company")
     location = escape(job.location or "Unknown location")
@@ -692,6 +746,12 @@ def render_job(job: JobRecord, job_sources: List[JobSourceRecord]) -> str:
     description = render_description(job.description)
     deadline = job.application_deadline or "No deadline"
     posted = job.posted_at or job.posted_text or "No post date"
+    job_href = safe_href(job.linkedin_url)
+    title_link = f'<span class="job-title">{title}</span>'
+    open_link = ""
+    if job_href:
+        title_link = f'<a class="job-title" href="{job_href}" target="_blank" rel="noreferrer noopener">{title}</a>'
+        open_link = f'<a class="external-link" href="{job_href}" target="_blank" rel="noreferrer noopener">Open LinkedIn</a>'
 
     return f"""
       <details class="job-row">
@@ -710,8 +770,8 @@ def render_job(job: JobRecord, job_sources: List[JobSourceRecord]) -> str:
         <div class="job-details">
         <div class="job-main">
           <div class="detail-title-row">
-            <a class="job-title" href="{escape(job.linkedin_url)}" target="_blank" rel="noreferrer">{title}</a>
-            <a class="external-link" href="{escape(job.linkedin_url)}" target="_blank" rel="noreferrer">Open LinkedIn</a>
+            {title_link}
+            {open_link}
           </div>
           <p>{company} · {location}</p>
           <div class="chips">
@@ -738,11 +798,11 @@ def render_job(job: JobRecord, job_sources: List[JobSourceRecord]) -> str:
           {description}
         </div>
         <div class="actions">
-          {action_button(job.job_id, "save", "Save", "primary")}
-          {action_button(job.job_id, "applied", "Applied", "secondary")}
-          {action_button(job.job_id, "delete", "Not Interested", "danger")}
+          {action_button(job.job_id, "save", "Save", "primary", csrf_token)}
+          {action_button(job.job_id, "applied", "Applied", "secondary", csrf_token)}
+          {action_button(job.job_id, "delete", "Not Interested", "danger", csrf_token)}
         </div>
-        {render_tracking_form(job)}
+        {render_tracking_form(job, csrf_token)}
         </div>
       </details>
     """
@@ -968,11 +1028,12 @@ def fact(label: str, value: str, class_name: str = "") -> str:
 
 
 def fact_link(label: str, url: str) -> str:
-    if not url:
+    href = safe_href(url)
+    if not href:
         return fact(label, "")
     return (
         f"<div><dt>{escape(label)}</dt>"
-        f'<dd><a href="{escape(url)}" target="_blank" rel="noreferrer">Open</a></dd></div>'
+        f'<dd><a href="{href}" target="_blank" rel="noreferrer noopener">Open</a></dd></div>'
     )
 
 
@@ -1015,9 +1076,10 @@ def shorten(value: str, limit: int) -> str:
     return value[: limit - 1].rstrip() + "..."
 
 
-def render_tracking_form(job: JobRecord) -> str:
+def render_tracking_form(job: JobRecord, csrf_token: str = "") -> str:
     return f"""
       <form class="tracking" method="post" action="/jobs/{escape(job.job_id)}/update">
+        {csrf_input(csrf_token)}
         <label>
           Status
           <select name="user_status">
@@ -1050,25 +1112,92 @@ def status_option(value: str, label: str, current: str) -> str:
     return f'<option value="{value}"{selected}>{escape(label)}</option>'
 
 
-def action_button(job_id: str, action: str, label: str, class_name: str) -> str:
+def action_button(
+    job_id: str,
+    action: str,
+    label: str,
+    class_name: str,
+    csrf_token: str = "",
+) -> str:
     return f"""
       <form method="post" action="/jobs/{escape(job_id)}/{action}">
+        {csrf_input(csrf_token)}
         <button class="{class_name}" type="submit">{label}</button>
       </form>
     """
 
 
 def render_search_link(keyword: str, url: str) -> str:
+    href = safe_href(url)
+    if not href:
+        return ""
     return (
-        f'<a href="{escape(url)}" target="_blank" rel="noreferrer">'
+        f'<a href="{href}" target="_blank" rel="noreferrer noopener">'
         f"{escape(keyword)}</a>"
     )
 
 
 def render_manual_search_link(url: str) -> str:
-    if not url:
+    href = safe_href(url)
+    if not href:
         return ""
-    return f'<a href="{escape(url)}" target="_blank" rel="noreferrer">Manual LinkedIn URL</a>'
+    return f'<a href="{href}" target="_blank" rel="noreferrer noopener">Manual LinkedIn URL</a>'
+
+
+def csrf_input(token: str) -> str:
+    if not token:
+        return ""
+    return f'<input type="hidden" name="{CSRF_FIELD}" value="{escape(token)}">'
+
+
+def is_valid_csrf(form: Dict[str, List[str]], token: str) -> bool:
+    value = first_value(form, CSRF_FIELD)
+    return bool(token and value and secrets.compare_digest(value, token))
+
+
+def find_matching_source_context(
+    sources: List[SearchSource],
+    keyword: str,
+    source_url: str,
+) -> tuple[int, str, str]:
+    keyword = keyword.strip()
+    source_url = source_url.strip()
+    if source_url:
+        for source in sources:
+            for search in unique_urls(build_search_urls_for_source(source)):
+                if search.url == source_url:
+                    return source.id, source.name, search.keyword
+        manual_matches = [
+            source
+            for source in sources
+            if source.ai_search_url.strip() == source_url
+            and (not keyword or keyword in source.keyword_list())
+        ]
+        if len(manual_matches) == 1:
+            source = manual_matches[0]
+            matched_keyword = keyword
+            if not matched_keyword and len(source.keyword_list()) == 1:
+                matched_keyword = source.keyword_list()[0]
+            return source.id, source.name, matched_keyword
+
+    if keyword:
+        matches = [
+            source
+            for source in sources
+            if keyword in source.keyword_list()
+        ]
+        if len(matches) == 1:
+            source = matches[0]
+            return source.id, source.name, keyword
+    return 0, "", ""
+
+
+def safe_href(url: str) -> str:
+    value = url.strip()
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return ""
+    return escape(value, quote=True)
 
 
 def render_notice(text: Optional[str], class_name: str) -> str:
