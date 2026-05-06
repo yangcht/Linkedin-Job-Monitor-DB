@@ -1,0 +1,152 @@
+Metadata-Version: 2.4
+Name: linked-jobs-monitor
+Version: 0.1.0
+Summary: Small local app for LinkedIn Jobs search tracking and application workflow notes.
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: license-file
+
+# Linked Jobs Monitor
+
+A small local app that helps you manage multiple LinkedIn Jobs searches, import saved LinkedIn HTML, and track applications locally.
+
+The default sample config seeds the first search setup with this intent:
+
+- keywords: `Azure`, `PowerBI`, `marine`, `logistics`, `RAG`
+- location: Gothenburg, Sweden
+- radius: 300 km
+- posted: past week
+- sort: newest first
+
+After the first launch, keywords and search areas are managed in the web interface, not hardcoded in the app. You can add searches for different keyword sets, locations, radii, or LinkedIn AI URLs; all results are stored in the same local database.
+
+Screenshot of the web UI:
+![](./Screenshot_web_UI.png)
+
+## Architecture
+
+The current design is documented in [docs/architecture.md](/Users/yangcht/Documents/New%20project/docs/architecture.md).
+
+The short version:
+
+- LinkedIn parsing lives in `parser.py`.
+- Search setups and jobs live in SQLite at `.job_state/jobs.sqlite3`.
+- User tracking fields include `new`, `saved`, `not_interested`, `applied`, `applied_at`, `application_status`, and notes.
+- Jobs marked `not_interested` are hidden but remain in the database, so they do not come back.
+
+## Why it works this way
+
+LinkedIn can restrict automated scraping and account automation. This project does not automate login, passwords, applying, messaging, or bypassing. It does safer local tracking:
+
+1. Builds the filtered public LinkedIn Jobs URLs you would otherwise create manually.
+2. Opens your LinkedIn AI-search URL in your browser when configured.
+3. Tracks job IDs and metadata from public result pages, public detail pages, or saved HTML.
+4. Keeps your application workflow state locally.
+
+## Setup
+
+```bash
+cp config.example.ini config.ini
+/usr/bin/python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+## Quick Start
+
+On macOS, double-click [Linked Jobs Monitor.command](/Users/yangcht/Documents/New%20project/Linked%20Jobs%20Monitor.command). It starts the local server and opens the web app.
+
+Or run:
+
+```bash
+python3 app.py
+```
+
+Then visit `http://127.0.0.1:8765`.
+
+## CLI Use
+
+Print the LinkedIn search URLs:
+
+```bash
+linked-jobs urls
+```
+
+Open every configured search in your default browser:
+
+```bash
+linked-jobs open
+```
+
+Try a polite public-page check and write a Markdown report:
+
+```bash
+linked-jobs check
+```
+
+Fetch richer detail pages for visible jobs that still need deadline/details:
+
+```bash
+linked-jobs enrich-details --limit 10
+```
+
+Run the local web interface:
+
+```bash
+linked-jobs-app
+```
+
+Then open `http://127.0.0.1:8765`.
+
+If LinkedIn blocks public fetching, or if you want to use the logged-in LinkedIn AI search:
+
+1. Open the relevant search setup's `LinkedIn AI Search` link from the web page, or run `linked-jobs open`.
+2. Open the AI search link in your browser.
+3. Save the search result page HTML from the browser.
+3. Import the saved HTML from the web interface, or use the CLI:
+
+```bash
+linked-jobs import-html ~/Downloads/linkedin-search.html
+```
+
+Reports are written under `reports/`. Jobs are stored in `.job_state/jobs.sqlite3`.
+
+## How parsing works
+
+The app has two collection paths:
+
+1. Public keyword searches: `Refresh Active Searches` reads active search setups from SQLite, builds LinkedIn Jobs URLs from each setup's `keywords`, `location`, `geo_id`, `radius_km`, and `posted_within_days`, fetches those public result pages, and parses job cards from the returned HTML.
+2. Logged-in AI search import: a setup can store a `LinkedIn AI Search` URL. If LinkedIn requires a login for that page, open it in your normal browser, log in normally, save or copy the page HTML, then paste it into the web app's import box. The app parses that HTML locally.
+
+The database is not tied to one keyword set. A job can be discovered from any search setup, and your saved/applied/not-interested status stays attached to the LinkedIn job ID when the same job appears again.
+
+You do not need to give this app a LinkedIn login cookie for the public keyword searches. The exact LinkedIn AI search URL may require a logged-in browser session because LinkedIn returns a sign-in page to non-browser/public fetches.
+
+The parser stores the LinkedIn job ID plus visible result-card fields such as title, company, location, posting date, keyword, and source URL. For deadline, employment type, seniority, function, industries, applicants, and description, use `Enrich Details` or import a job detail page, because those fields are usually on the individual job page rather than the search result card.
+
+## Web interface
+
+The web page shows:
+
+- an expandable list view, with one row per job
+- search across title, company, location, notes, application status, and description
+- filters for status, keyword, and detail-enrichment state
+- sorting by posted date, deadline, first seen date, title, or company
+- new, saved, and applied jobs with application metadata
+- a count of deleted jobs that are hidden from the interface
+- a count of jobs still needing detail enrichment
+- links to open each configured LinkedIn search
+- editable search setups for different keywords, locations, date windows, radii, sort modes, and optional LinkedIn AI-search links
+- a paste box for importing saved LinkedIn result-page HTML
+
+Each job card can show title, company, location, source keyword, posting date, deadline, employment type, seniority, job function, industries, applicant count, first/last seen, source link, detail-fetch status, and a description preview when available.
+
+Saving a job moves it to the saved list. Marking a job not interested hides it and keeps the ID in `.job_state/jobs.sqlite3`, so the same job will not appear again after future checks or imports. Marking a job applied stores the applied date, application status, and notes.
+
+## Notes
+
+- LinkedIn URL filters are not official API contracts and can change.
+- The distance value in LinkedIn job URLs is commonly documented as miles. The sample config stores `radius_km = 300` and generates `distance=187`, which is approximately 300 km.
+- The official LinkedIn Job Posting API is for approved partners posting jobs to LinkedIn, not for general job-search fetching.
+- For a fully managed alert, also create the same searches inside LinkedIn Jobs and turn on LinkedIn's built-in job alerts.

@@ -1,0 +1,3 @@
+[console_scripts]
+linked-jobs = linked_jobs_monitor.cli:main
+linked-jobs-app = linked_jobs_monitor.app:main
