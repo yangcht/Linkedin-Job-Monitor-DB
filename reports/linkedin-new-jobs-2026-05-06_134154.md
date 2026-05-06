@@ -1,0 +1,134 @@
+# New LinkedIn Jobs
+
+- [PowerBI] [Power BI Consultant](https://www.linkedin.com/jobs/view/4164109544/) - B3 Consulting Group
+- [Azure] [Data Engineer](https://www.linkedin.com/jobs/view/4164114051/) - B3 Consulting Group
+- [Azure] [Cloud engineer (Azure)](https://www.linkedin.com/jobs/view/4237700176/) - Capgemini
+- [Azure] [Fullstack Developer](https://www.linkedin.com/jobs/view/4250136134/) - Expleo Group
+- [Azure] [Javautvecklare](https://www.linkedin.com/jobs/view/4253103453/) - Capgemini
+- [marine] [Technical ERP Architect](https://www.linkedin.com/jobs/view/4323193393/) - Consilium Safety Group
+- [Azure] [Senior Platform Engineer - Digital Platform](https://www.linkedin.com/jobs/view/4326641954/) - Consilium Safety Group
+- [Azure] [Backend Developer - Checkout](https://www.linkedin.com/jobs/view/4364626967/) - Walley
+- [Azure] [Databricks Specialist till Knowit i Göteborg!](https://www.linkedin.com/jobs/view/4366151720/) - Knowit
+- [logistics] [Operator](https://www.linkedin.com/jobs/view/4369099854/) - W. R. Grace
+- [logistics] [Operator](https://www.linkedin.com/jobs/view/4369207083/) - W. R. Grace
+- [logistics] [Logistic Assistant](https://www.linkedin.com/jobs/view/4369615250/) - Avantor
+- [Azure] [Senior Cloud Engineer](https://www.linkedin.com/jobs/view/4376420960/) - Thomson Reuters
+- [Azure] [Technical Solution Architect Dynamics 365 CE Göteborg](https://www.linkedin.com/jobs/view/4377690619/) - Sopra Steria
+- [Azure] [Microsoft 365-utvecklare Göteborg](https://www.linkedin.com/jobs/view/4377692503/) - Sopra Steria
+- [Azure] [M365 AI Solution Specialist Göteborg](https://www.linkedin.com/jobs/view/4379017123/) - Sopra Steria
+- [Azure] [IT-drifttekniker – arbeta med drift, infrastruktur och stabila IT-miljöer](https://www.linkedin.com/jobs/view/4381817692/) - Eccera IT Professionals Sverige
+- [Azure] [Är du Göteborgs nästa stjärna inom IT-support?](https://www.linkedin.com/jobs/view/4381835188/) - Eccera IT Professionals Sverige
+- [Azure] [Senior Data Engineer](https://www.linkedin.com/jobs/view/4383711789/) - E-Solutions
+- [marine] [HR Business Partner](https://www.linkedin.com/jobs/view/4386851630/) - Consilium Safety Group
+- [logistics] [Lastbilschaufförer](https://www.linkedin.com/jobs/view/4387845076/) - DFDS
+- [RAG] [Platform Software Engineer](https://www.linkedin.com/jobs/view/4397617272/) - Iver Sverige
+- [Azure] [Senior Consultant - Advanced .NET, C#, Azure, React, Power Platform, Office 365, AI](https://www.linkedin.com/jobs/view/4398291088/) - Infosys
+- [Azure] [Data Scientist](https://www.linkedin.com/jobs/view/4398448940/) - Nexer Insight
+- [Azure] [Business Intelligence Consultant](https://www.linkedin.com/jobs/view/4398469045/) - Nexer Insight
+- [Azure] [Data Engineer](https://www.linkedin.com/jobs/view/4398471002/) - Nexer Insight
+- [Azure] [Senior Consultant - Microsoft Power Platform](https://www.linkedin.com/jobs/view/4398823862/) - Infosys
+- [Azure] [Technology Architect- End User Computing (Intune/MECM)](https://www.linkedin.com/jobs/view/4398824871/) - Infosys
+- [Azure] [Technology Architect- End User Computing (VDI / AVD / Azure)](https://www.linkedin.com/jobs/view/4398829826/) - Infosys
+- [Azure] [Principal Consultant - Advanced .NET, C#, Azure, React, Power Platform, Office 365, AI](https://www.linkedin.com/jobs/view/4398831806/) - Infosys
+- [Azure] [Technology Architect - Collaboration / Microsoft 365 Architect](https://www.linkedin.com/jobs/view/4398837292/) - Infosys
+- [logistics] [Key Account Manager – International Trading](https://www.linkedin.com/jobs/view/4400528083/) - Stena Recycling AB
+- [marine] [VIE - Buyer Electromobility Charging & Power Management](https://www.linkedin.com/jobs/view/4401728275/) - Volvo Group
+- [logistics] [Operations support](https://www.linkedin.com/jobs/view/4404999353/) - Lease a Bike | Sweden
+- [logistics] [After Sales Manager](https://www.linkedin.com/jobs/view/4406098575/) - Kärcher
+- [Azure] [Automotive DevOps & Cloud Engineer](https://www.linkedin.com/jobs/view/4406449903/) - ALTEN
+- [logistics] [Tactical Buyer](https://www.linkedin.com/jobs/view/4406454662/) - Stena Line
+- [logistics] [Enterprise Sales Account Executive](https://www.linkedin.com/jobs/view/4406730112/) - Asana
+- [Azure] [Linux-/Infrastrukturkonsult till vår kund i Göteborg](https://www.linkedin.com/jobs/view/4406785169/) - Wise IT
+- [logistics] [Regional transportledare Beijer Logistikcenter Hisings backa](https://www.linkedin.com/jobs/view/4407031991/) - Beijer Byggmaterial AB
+- [logistics] [Truckförare, Mölndal](https://www.linkedin.com/jobs/view/4407033915/) - Logent
+- [logistics] [Production Operator](https://www.linkedin.com/jobs/view/4407045720/) - SHT Smart High Tech AB
+- [logistics] [Today Mobility – Förare sökes i Kungsbacka på heltid!](https://www.linkedin.com/jobs/view/4407049602/) - Today Mobility
+- [logistics] [BUTIKSMEDARBETARE 50 % BACKAPLAN](https://www.linkedin.com/jobs/view/4407050425/) - Lager 157
+- [Azure] [Fullstack Software Engineer (.NET) – Industrial Software & Simulation](https://www.linkedin.com/jobs/view/4407079760/) - WeQuel
+- [logistics] [Operatörer, Maskinoperatörer och Truckförare - Volvo Cars Torslanda](https://www.linkedin.com/jobs/view/4407159352/) - Volvo Cars
+- [logistics] [Chaufför Göteborg Circle K Transport](https://www.linkedin.com/jobs/view/4407208425/) - Circle K
+- [Azure] [Platform Engineer - Multicloud](https://www.linkedin.com/jobs/view/4407331404/) - Jobgether
+- [logistics] [Butiksmedarbetare med säljdriv](https://www.linkedin.com/jobs/view/4407386420/) - NetOnNet
+- [Azure] [Platform Engineer Network Services](https://www.linkedin.com/jobs/view/4407389381/) - AddSecure
+- [Azure] [Security Engineer](https://www.linkedin.com/jobs/view/4407630078/) - Horse Powertrain
+- [marine] [Business Development and M&A Internship](https://www.linkedin.com/jobs/view/4407634075/) - Ernströmgruppen AB
+- [logistics] [Chaufför till Sortera Recycling Göteborg](https://www.linkedin.com/jobs/view/4407637010/) - Sortera
+- [logistics] [Butikschef Beijer Hisings Backa](https://www.linkedin.com/jobs/view/4407640021/) - Beijer Byggmaterial AB
+- [Azure] [Senior Cloud-Native Software Engineer (Kubernetes / Azure / AWS)](https://www.linkedin.com/jobs/view/4407659569/) - SiNIX
+- [logistics] [Flyttkarl](https://www.linkedin.com/jobs/view/4407753574/) - FlexMove AB
+- [logistics] [Semestervikarie Lagerarbetare/Chaufför – R&F Travel Retail](https://www.linkedin.com/jobs/view/4407758215/) - Stena Line
+- [Azure] [IT-chef](https://www.linkedin.com/jobs/view/4407878989/) - Combitech
+- [logistics] [Strategisk Inköpare – Indirekt Inköp till Iver](https://www.linkedin.com/jobs/view/4408184212/) - Jefferson Wells Sverige
+- [PowerBI] [Data Analyst - Power BI](https://www.linkedin.com/jobs/view/4408192509/) - Ubique Systems
+- [logistics] [Supply Chain & Customs Administrator till Alps Alpine](https://www.linkedin.com/jobs/view/4408240748/) - Wise Management (f.d. K2search)
+- [logistics] [Product Manager (AI empowered product environment)](https://www.linkedin.com/jobs/view/4408298527/) - Trimble Inc.
+- [Azure] [Customer Solutions Architect](https://www.linkedin.com/jobs/view/4408379880/) - ValidIT AB
+- [logistics] [Sommarjobb serviceman](https://www.linkedin.com/jobs/view/4408400915/) - Lambertsson Logistics
+- [marine] [Universitetslektor i globala studier med inriktning hållbarhet och projektledning](https://www.linkedin.com/jobs/view/4408420832/) - University of Gothenburg
+- [logistics] [OPERATIONS STAGIAIR(E)](https://www.linkedin.com/jobs/view/4408576871/) - FOUR Amsterdam
+- [logistics] [WAREHOUSE STAGIAIR(E)](https://www.linkedin.com/jobs/view/4408588050/) - FOUR Amsterdam
+- [logistics] [Inköpare - Automotive](https://www.linkedin.com/jobs/view/4408656557/) - Procuart
+- [Azure] [AI developer](https://www.linkedin.com/jobs/view/4408680169/) - Deploja
+- [logistics] [CE chaufför till Swed Handling i Björketorp](https://www.linkedin.com/jobs/view/4408683184/) - Telko
+- [logistics] [Uthyrare/Hyresadministratör](https://www.linkedin.com/jobs/view/4408728859/) - Flipr
+- [Azure] [Platform Engineer](https://www.linkedin.com/jobs/view/4408757784/) - AddSecure
+- [Azure] [Fullstack .NET Developer – E-commerce, Integrations & AI](https://www.linkedin.com/jobs/view/4408765154/) - Brandon AB
+- [Azure] [Lead Backend/Cloud Developer](https://www.linkedin.com/jobs/view/4408767914/) - Tata Technologies
+- [Azure] [Data Engineer - Göteborg](https://www.linkedin.com/jobs/view/4408802837/) - Valoriim
+- [logistics] [eCom Key Account Manager](https://www.linkedin.com/jobs/view/4408808933/) - Beiersdorf
+- [Azure] [Senior System Design Engineer](https://www.linkedin.com/jobs/view/4408910854/) - Aurora Engineering AB
+- [marine] [Business Analyst](https://www.linkedin.com/jobs/view/4408917588/) - Consilium Safety Sweden
+- [logistics] [Paketsorterare till Härryda](https://www.linkedin.com/jobs/view/4408918041/) - Boxflow Logistics
+- [marine] [Business Analyst](https://www.linkedin.com/jobs/view/4408922023/) - Consilium Safety Group
+- [logistics] [Brevbärare/paketbud - Alingsås](https://www.linkedin.com/jobs/view/4408949777/) - CityMail Sweden AB
+- [Azure] [Infrastructure Engineer – Hybrid Compute & AVD](https://www.linkedin.com/jobs/view/4408953784/) - Vitrolife & Igenomix Brasil, part of Vitrolife Group
+- [logistics] [Senior Buyer](https://www.linkedin.com/jobs/view/4409002325/) - Volvo Cars
+- [logistics] [Verksamhetschef till Göteborg](https://www.linkedin.com/jobs/view/4409005004/) - Samhall AB
+- [marine] [Customer Success Manager — Maritime](https://www.linkedin.com/jobs/view/4409015446/) - Cetasol
+- [logistics] [Procurement & Sustainability Leader, Claims Motor](https://www.linkedin.com/jobs/view/4409030286/) - If Insurance
+- [Azure] [Platform Engineer Network Services](https://www.linkedin.com/jobs/view/4409036301/) - AddSecure
+- [Azure] [DevOps Engineer (Zone Control / Zonal Execution Environment) - F/M/X](https://www.linkedin.com/jobs/view/4409041046/) - Amaris Consulting
+- [logistics] [Support Agent](https://www.linkedin.com/jobs/view/4409050394/) - nShift
+- [Azure] [Devops Engineer](https://www.linkedin.com/jobs/view/4409074895/) - Knowit
+- [Azure] [Fullstackutvecklare med frontendfokus](https://www.linkedin.com/jobs/view/4409134547/) - Knightec Group
+- [logistics] [Vi söker verksamhetschef till Attendo Hemtjänst i Kungälv](https://www.linkedin.com/jobs/view/4409304250/) - Attendo
+- [logistics] [Flygspeditör till Dachser](https://www.linkedin.com/jobs/view/4409337326/) - Bravura Sverige
+- [Azure] [AI utvecklare](https://www.linkedin.com/jobs/view/4409341902/) - Intenso Interim Management
+- [Azure] [Software Engineer](https://www.linkedin.com/jobs/view/4409391683/) - Professional Galaxy AB
+- [Azure] [Senior HIL & SIL Test Engineer | Mobility](https://www.linkedin.com/jobs/view/4409392614/) - Together Tech
+- [Azure] [Software Engineer](https://www.linkedin.com/jobs/view/4409398538/) - Deploja
+- [Azure] [IT-arkitekt](https://www.linkedin.com/jobs/view/4409706139/) - Intenso Interim Management
+- [logistics] [Pricing Coordinator](https://www.linkedin.com/jobs/view/4409716127/) - JAS Worldwide
+- [Azure] [Senior AI Solutions Engineer](https://www.linkedin.com/jobs/view/4409734488/) - Novacura - Solutions and Services for ERP Systems
+- [logistics] [Finance Business Partner](https://www.linkedin.com/jobs/view/4409738350/) - Compass Consulting Arg
+- [Azure] [Machine Learning Engineer](https://www.linkedin.com/jobs/view/4409791462/) - Senovo IT Ltd
+- [Azure] [Senior Data Engineer](https://www.linkedin.com/jobs/view/4409797481/) - Volvo Group
+- [Azure] [Senior Data Engineer](https://www.linkedin.com/jobs/view/4409798491/) - Volvo Group
+- [Azure] [Modern Workplace Specialist sökes till Nordlo i Göteborg](https://www.linkedin.com/jobs/view/4409799802/) - Nordlo Group
+- [Azure] [Senior DevOps Engineer](https://www.linkedin.com/jobs/view/4409909195/) - TECHLA
+- [Azure] [Intune & Endpoint Specialist](https://www.linkedin.com/jobs/view/4410020765/) - Nexer Group
+- [Azure] [Senior Data Engineer - Traction Battery](https://www.linkedin.com/jobs/view/4410022337/) - Volvo Cars
+- [logistics] [Customer Experience Consultant](https://www.linkedin.com/jobs/view/4410025742/) - A.P. Moller - Maersk
+- [Azure] [Software Engineer Backend](https://www.linkedin.com/jobs/view/4410028451/) - Tata Technologies
+- [marine] [Independent M&A Partner](https://www.linkedin.com/jobs/view/4410031677/) - ONEtoONE Corporate Finance
+- [logistics] [Supply Operations Coordinator](https://www.linkedin.com/jobs/view/4410043740/) - NJIE Foods
+- [logistics] [Marketing Coordinator](https://www.linkedin.com/jobs/view/4410057763/) - Focus Nordic AB
+- [marine] [Sommarjobb till vår matsal i Gunnilse](https://www.linkedin.com/jobs/view/4410057861/) - AkzoNobel
+- [marine] [System Engineer for Automotive Android Platform](https://www.linkedin.com/jobs/view/4410074103/) - CPAC Systems AB
+- [logistics] [German-speaking Sales Executive to Gothenburg, Sweden](https://www.linkedin.com/jobs/view/4410095209/) - Worldwiders Recruitment
+- [RAG] [Senior ML/AI Engineer](https://www.linkedin.com/jobs/view/4410211415/) - Techster Solutions AB
+- [Azure] [Data Engineer - Göteborg](https://www.linkedin.com/jobs/view/4410235235/) - Columbus
+- [logistics] [Budbils chaufför timanställd](https://www.linkedin.com/jobs/view/4410505728/) - Göteborgs Stad
+- [logistics] [Butiksmedarbetare, team färsk, Willys Älvängen Handelsplats](https://www.linkedin.com/jobs/view/4410519678/) - Willys
+- [logistics] [Production Operator](https://www.linkedin.com/jobs/view/4410533215/) - GA Lindberg AB
+- [Azure] [Integrationsutvecklare för lagersystem](https://www.linkedin.com/jobs/view/4410534321/) - Qsys
+- [logistics] [VIE - Buyer Door Components H/F](https://www.linkedin.com/jobs/view/4410548971/) - Volvo Group
+- [Azure] [Data Specialist](https://www.linkedin.com/jobs/view/4410554582/) - Combitech
+- [logistics] [Flygspeditör](https://www.linkedin.com/jobs/view/4410575183/) - DACHSER
+- [logistics] [Senior Buyer](https://www.linkedin.com/jobs/view/4410710526/) - JobBusters AB
+- [marine] [VIE - Commodity Buyer H/F](https://www.linkedin.com/jobs/view/4410713871/) - Volvo Group
+- [logistics] [Trucking Manager Sweden](https://www.linkedin.com/jobs/view/4410719774/) - Royal Den Hartogh Logistics
+- [logistics] [Trafikplanerare på heltid till DFDS Logistics Services!](https://www.linkedin.com/jobs/view/4410750850/) - DFDS Professionals
+- [logistics] [Innesäljare](https://www.linkedin.com/jobs/view/4410965776/) - Scient Group
+- [logistics] [Butiksmedarbetare (sommarjobb), Willys Kungälv Komarken](https://www.linkedin.com/jobs/view/4410967384/) - Willys
+- [logistics] [Sommarvikarie chaufför med C/CE-behörighet till Textilia Göteborg!](https://www.linkedin.com/jobs/view/4410969336/) - Textilia Sverige

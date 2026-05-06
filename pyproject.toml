@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "linked-jobs-monitor"
+version = "0.1.0"
+description = "Small local app for LinkedIn Jobs search tracking and application workflow notes."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+linked-jobs = "linked_jobs_monitor.cli:main"
+linked-jobs-app = "linked_jobs_monitor.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
