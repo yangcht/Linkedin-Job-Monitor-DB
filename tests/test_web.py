@@ -12,7 +12,7 @@ from test_parser import SEARCH_HTML
 class WebTests(unittest.TestCase):
     def test_not_interested_job_is_not_rendered(self):
         with tempfile.TemporaryDirectory() as tmp:
-            config = test_config(tmp)
+            config = make_config(tmp)
             db = open_database(config.run.db_file)
             db.upsert_jobs(extract_jobs(SEARCH_HTML, keyword="Azure"))
             db.mark_not_interested("4408953784")
@@ -26,7 +26,7 @@ class WebTests(unittest.TestCase):
 
     def test_applied_job_metadata_is_rendered(self):
         with tempfile.TemporaryDirectory() as tmp:
-            config = test_config(tmp)
+            config = make_config(tmp)
             db = open_database(config.run.db_file)
             db.upsert_jobs(extract_jobs(SEARCH_HTML, keyword="Azure"))
             db.mark_applied("4408953784", applied_at="2026-05-06")
@@ -43,7 +43,7 @@ class WebTests(unittest.TestCase):
 
     def test_search_filter_hides_non_matching_jobs(self):
         with tempfile.TemporaryDirectory() as tmp:
-            config = test_config(tmp)
+            config = make_config(tmp)
             db = open_database(config.run.db_file)
             db.upsert_jobs(extract_jobs(SEARCH_HTML, keyword="Azure"))
             db.close()
@@ -55,7 +55,7 @@ class WebTests(unittest.TestCase):
 
     def test_status_filter_can_show_applied_jobs(self):
         with tempfile.TemporaryDirectory() as tmp:
-            config = test_config(tmp)
+            config = make_config(tmp)
             db = open_database(config.run.db_file)
             db.upsert_jobs(extract_jobs(SEARCH_HTML, keyword="Azure"))
             db.mark_applied("4408953784", applied_at="2026-05-06")
@@ -68,7 +68,7 @@ class WebTests(unittest.TestCase):
 
     def test_page_renders_search_setup_management(self):
         with tempfile.TemporaryDirectory() as tmp:
-            config = test_config(tmp)
+            config = make_config(tmp)
 
             page = render_page(config)
 
@@ -78,7 +78,7 @@ class WebTests(unittest.TestCase):
         self.assertIn("Refresh This", page)
 
 
-def test_config(tmp: str) -> AppConfig:
+def make_config(tmp: str) -> AppConfig:
     return AppConfig(
         search=SearchConfig(
             keywords=["Azure"],

@@ -182,12 +182,12 @@ def build_handler(config: AppConfig):
 
         def add_search_source(self) -> None:
             form = self.read_form()
+            db = open_database(
+                config.run.db_file,
+                legacy_json_path=config.run.state_file,
+                seed_search_config=config.search,
+            )
             try:
-                db = open_database(
-                    config.run.db_file,
-                    legacy_json_path=config.run.state_file,
-                    seed_search_config=config.search,
-                )
                 db.add_search_source(
                     name=first_value(form, "name"),
                     keywords=first_value(form, "keywords"),
@@ -199,10 +199,11 @@ def build_handler(config: AppConfig):
                     sort_by=first_value(form, "sort_by") or "DD",
                     is_active=first_value(form, "is_active") == "1",
                 )
-                db.close()
             except ValueError as exc:
                 self.redirect("/", error=str(exc))
                 return
+            finally:
+                db.close()
             self.redirect("/", message="Search source added.")
 
         def update_search_source(self, path: str) -> None:
@@ -315,7 +316,7 @@ def build_handler(config: AppConfig):
             self.redirect("/", message=message)
 
         def read_form(self) -> Dict[str, List[str]]:
-            length = int(self.headers.get("Content-Length", "0"))
+            length = min(int(self.headers.get("Content-Length", "0")), 1_048_576)
             raw_body = self.rfile.read(length).decode("utf-8", errors="replace")
             return parse_qs(raw_body, keep_blank_values=True)
 

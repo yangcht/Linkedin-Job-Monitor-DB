@@ -91,6 +91,7 @@ class JobDatabase:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(path))
         self.conn.row_factory = sqlite3.Row
+        self.conn.execute("PRAGMA journal_mode=WAL")
         self.ensure_schema()
         if seed_search_config:
             self.seed_search_source(seed_search_config)

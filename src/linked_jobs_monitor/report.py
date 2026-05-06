@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, List
 
@@ -19,7 +19,7 @@ def format_jobs(jobs: Iterable[JobRecord]) -> str:
 
 def write_report(report_dir: Path, new_jobs: List[JobRecord]) -> Path:
     report_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
     path = report_dir / f"linkedin-new-jobs-{timestamp}.md"
     if new_jobs:
         body = "# New LinkedIn Jobs\n\n" + format_jobs(new_jobs) + "\n"
